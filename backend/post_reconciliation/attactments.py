@@ -1,4 +1,5 @@
 import pandas as pd
+from datetime import date
 from typing import Dict
 
 
@@ -16,15 +17,29 @@ def build_attachments(
     # Attachment 1:
     # Delivery present but NOT in RTO
     # --------------------------------------------------
+    attachment_1_cols = ['showroom_del', 'delivery_date_del', 'customer_name_del', 'chassis_no_del', 'vin_del', 'status']
     attachment_1 = delivery_recon[
         delivery_recon["status"] == "Not Matched"
     ].copy()
+
+    attachment_1['delivery_date_del'] = pd.to_datetime(
+        attachment_1["delivery_date_del"],format="%Y-%m-%d"
+    ).dt.strftime("%d-%m-%Y")
+    
+    attachment_1 = attachment_1[attachment_1_cols]
+
+    attachment_1.rename({'showroom_del':'Location', 
+                         'delivery_date_del':'Delivery Date', 
+                         'customer_name_del':'Customer Name', 
+                         'chassis_no_del': 'Chassis Number',
+                         'vin_del':"VIN Number", 
+                         'status': 'RTO Status'}, axis=1, inplace=True)
 
     # --------------------------------------------------
     # Attachment 2:
     # RTO present but NOT in Delivery (current + previous)
     # --------------------------------------------------
-    attachment_2_cols = ["office_name_rto","chassis_no_rto","vin_rto","registration_no_rto","owner_name_rto"]
+    attachment_2_cols = ["office_name_rto","chassis_no_rto","vin_rto","registration_no_rto","owner_name_rto","status"]
     attachment_2 = rto_recon[
         (
         (rto_recon['rto_code'] == "UP32") |
@@ -35,7 +50,12 @@ def build_attachments(
         (rto_recon["status"] == "Not Matched")
     ].copy()
     attachment_2 = attachment_2[attachment_2_cols]
-    # attachment_2.rename()
+    attachment_2.rename({'office_name_rto':'Location', 
+                         'chassis_no_rto': 'Chassis Number',
+                         'vin_rto':'VIN Number',
+                         'registration_no_rto': 'Registration Number',
+                         'owner_name_rto':'Owner Name', 
+                         'status': 'Status'}, axis=1, inplace=True)
 
     return {
         "attachment_1": attachment_1,
