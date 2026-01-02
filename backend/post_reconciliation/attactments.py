@@ -20,7 +20,10 @@ def build_attachments(
     attachment_1_cols = ['showroom_del', 'delivery_date_del', 'customer_name_del', 'chassis_no_del', 'vin_del', 'status']
     attachment_1 = delivery_recon[
         delivery_recon["status"] == "Not Matched"
-    ].copy()
+    ].sort_values(
+        by=["showroom_del","delivery_date_del"],
+        na_position="last"
+    ).reset_index(drop=True).copy()
 
     attachment_1['delivery_date_del'] = pd.to_datetime(
         attachment_1["delivery_date_del"],format="%Y-%m-%d"

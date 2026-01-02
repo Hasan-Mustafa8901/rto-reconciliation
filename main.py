@@ -1,241 +1,31 @@
-# import customtkinter as ctk
-# from customtkinter import CTk
-# from tkinter import filedialog, messagebox, ttk
-# import pandas as pd
-# import os
-
-# class RTORecoApp(ctk.CTk):
-#     def __init__(self, root):
-#         self.root = root
-#         self.root.title("RTO Reconciliation Tool")
-#         self.root.geometry("1000x600")
-
-#         self.df = None
-
-#         # Root grid config
-#         self.root.grid_rowconfigure(0, weight=0)
-#         self.root.grid_columnconfigure(0, weight=1)
-
-
-#         # --- File loader ---
-#         load_frame = ctk.LabelFrame(
-#             root,
-#             text="Load File",
-#             padx=15,
-#             pady=10
-#         )
-#         load_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=10)
-
-#         # Make it expand across window width
-#         load_frame.grid_columnconfigure(0, weight=1)
-
-#         upload_btn = tk.Button(
-#             load_frame,
-#             text="Load File",
-#             width=20,
-#             command=self.upload_file
-#         )
-#         upload_btn.grid(
-#             row=0,
-#             column=0,
-#             sticky="w"
-#         )
-#         self.status_label = tk.Label(
-#             load_frame,
-#             text="No file selected",
-#             fg="gray"
-#         )
-#         self.status_label.grid(row=0, column=1, pady=5)
-
-#         # --- Workbook Info ----
-#         info_frame = tk.LabelFrame(self.root, text="Workbook Info", padx=15, pady=10)
-#         info_frame.grid(row=1, column=0, sticky="ew", padx=20, pady=10)
-
-#         # Make frame stretch horizontally
-#         info_frame.grid_columnconfigure(0, weight=1)
-#         info_frame.grid_columnconfigure(1, weight=1)
-
-#         tk.Label(info_frame, text="Sheet: ", anchor="w").grid(row=0, column=0, sticky="w")
-
-#         self.selected_sheet = tk.StringVar()
-
-#         self.sheet_dropdown = ttk.Combobox(
-#             info_frame, 
-#             textvariable=self.selected_sheet,
-#             state="readonly",
-#             width=30
-#         )
-#         self.sheet_dropdown.grid(row=1, column=0, sticky="w", pady=(5,10))
-
-#         self.rows_var = tk.StringVar(value="Rows: -")
-#         self.cols_var = tk.StringVar(value="Columns: -")
-
-#         tk.Label(
-#             info_frame,
-#             textvariable=self.rows_var,
-#             anchor="w"
-#         ).grid(row=0, column=0, sticky="w", padx=(40,0))
-
-#         tk.Label(
-#             info_frame,
-#             textvariable=self.cols_var,
-#             anchor="w"
-#         ).grid(row=0, column=1, sticky="w", padx=(40,0))
-
-#         tk.Label(info_frame, text="Headers: ", anchor="w").grid(row=2, column=0, sticky="w", pady=(10,2))
-
-#         self.headers_text = tk.Text(info_frame, height=4, wrap="word")
-#         self.headers_text.grid(row=3, column=0, columnspan=2, sticky="ew")
-#         self.headers_text.config(state="disabled")
-
-#         # -- Dealership Selection --- 
-
-#         dealer_frame = tk.LabelFrame(self.root, text="Select Dealership", padx=15, pady=10)
-#         dealer_frame.grid(row=2,column=0,sticky="w",padx=20, pady=10)
-#         # Fix width behaviour(important)
-#         dealer_frame.grid_columnconfigure(0, weight=0)
-
-#         self.selected_dealer = tk.StringVar(value="")
-
-#         tk.Radiobutton(dealer_frame,text="BR Hyundai", variable=self.selected_dealer,value="BR").grid(row=0,column=0,sticky="w")
-#         tk.Radiobutton(dealer_frame,text="SAS Hyundai", variable=self.selected_dealer,value="SAS").grid(row=1,column=0,sticky="w")
-#         tk.Radiobutton(dealer_frame,text="JSV Hyundai", variable=self.selected_dealer,value="JSV").grid(row=2,column=0,sticky="w")
-
-#         # # ---------------- LEFT PANEL ----------------
-#         # left_frame = tk.Frame(main_frame)
-#         # left_frame.grid(row=1, column=0, sticky="nw")
-
-#         # upload_btn = tk.Button(
-#         #     left_frame,
-#         #     text="Upload Excel File",
-#         #     width=25,
-#         #     command=self.upload_file
-#         # )
-#         # upload_btn.grid(row=0, column=0, pady=5)
-
-#         # self.status_label = tk.Label(
-#         #     left_frame,
-#         #     text="No file selected",
-#         #     fg="gray"
-#         # )
-#         # self.status_label.grid(row=1, column=0, pady=5)
-
-#         # process_btn = tk.Button(
-#         #     left_frame,
-#         #     text="Process Data",
-#         #     width=25,
-#         #     command=self.process_data
-#         # )
-#         # process_btn.grid(row=2, column=0, pady=5)
-
-#         # save_btn = tk.Button(
-#         #     left_frame,
-#         #     text="Download Processed File",
-#         #     width=25,
-#         #     command=self.save_file
-#         # )
-#         # save_btn.grid(row=3, column=0, pady=5)
-
-#         # # ---------------- RIGHT PANEL (INFO) ----------------
-#         # right_frame = tk.LabelFrame(
-#         #     main_frame,
-#         #     text="File Info",
-#         #     padx=10,
-#         #     pady=10
-#         # )
-#         # right_frame.grid(row=1, column=1, sticky="ne", padx=(20, 0))
-
-#         # self.rows_var = tk.StringVar(value="Rows: -")
-#         # self.cols_var = tk.StringVar(value="Columns: -")
-#         # self.headers_var = tk.StringVar(value="Headers: -")
-
-#         # tk.Label(right_frame, textvariable=self.rows_var, anchor="w").grid(row=0, column=0, sticky="w", pady=2)
-#         # tk.Label(right_frame, textvariable=self.cols_var, anchor="w").grid(row=1, column=0, sticky="w", pady=2)
-
-#         # tk.Label(right_frame, text="Headers:", anchor="w").grid(row=2, column=0, sticky="w", pady=(10, 2))
-
-#         # self.headers_text = tk.Text(
-#         #     right_frame,
-#         #     width=30,
-#         #     height=6,
-#         #     wrap="word"
-#         # )
-#         # self.headers_text.grid(row=3, column=0)
-
-#         # self.headers_text.config(state="disabled")
-
-#     # ---------------- LOGIC ----------------
-#     def upload_file(self):
-#         # pass
-#         file_path = filedialog.askopenfilename(
-#             filetypes=[("Excel Files", "*.xlsx *.xls")]
-#         )
-
-#         if file_path:
-#             self.df = pd.read_excel(file_path)
-
-#             # Update status
-#             self.status_label.config(
-#                 text=f"Loaded: {os.path.basename(file_path)}",
-#                 fg="green"
-#             )
-
-#             # Update info panel
-#             self.rows_var.set(f"Rows: {self.df.shape[0]}")
-#             self.cols_var.set(f"Columns: {self.df.shape[1]}")
-
-#             headers = ", ".join(self.df.columns.astype(str))
-
-#             self.headers_text.config(state="normal")
-#             self.headers_text.delete("1.0", tk.END)
-#             self.headers_text.insert(tk.END, headers)
-#             self.headers_text.config(state="disabled")
-
-#     def update_filename(self):
-#         pass
-#     # def process_data(self):
-#     #     if self.df is None:
-#     #         messagebox.showerror("Error", "Please upload an Excel file first")
-#     #         return
-
-#     #     self.df = self.df.drop_duplicates()
-#     #     self.df = self.df.fillna("N/A")
-#     #     self.df["Processed"] = "Yes"
-
-#     #     messagebox.showinfo("Success", "Data processed successfully!")
-
-#     # def save_file(self):
-#     #     if self.df is None:
-#     #         messagebox.showerror("Error", "No processed data to save")
-#     #         return
-
-#     #     save_path = filedialog.asksaveasfilename(
-#     #         defaultextension=".xlsx",
-#     #         filetypes=[("Excel Files", "*.xlsx")]
-#     #     )
-
-#     #     if save_path:
-#     #         self.df.to_excel(save_path, index=False)
-#     #         messagebox.showinfo("Saved", "Processed file saved successfully!")
-
-
-# if __name__ == "__main__":
-#     ctk.set_appearance_mode("Light")
-#     ctk.set_default_color_theme("blue")
-#     app = RTORecoApp()
-#     app.mainloop()
 import customtkinter as ctk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 from backend.orchestrator.pipeline_runner import run_reconciliation_pipeline
 import threading
 import pandas as pd
 import os
 
+EXPECTED_SCHEMAS = {
+        "Delivery Data": {
+            "Delivery Date",
+            "Customer Name",
+            "Chassis Number",
+            "VIN Number",
+            "Showroom",
+        },
+        "RTO Data": {
+            "Office Name",
+            "Dealer Name",
+            "Vehicle Registration Number",
+            "Owner Name",
+            "Chassis Number",
+        },
+    }
 
 class RTORecoApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-
+    
         # ---------------- Window ----------------
         self.title("RTO Reconciliation Tool")
         self.geometry("1000x600")
@@ -249,24 +39,31 @@ class RTORecoApp(ctk.CTk):
         load_frame = ctk.CTkFrame(self)
         load_frame.grid(row=0, column=0, columnspan=3, sticky="ew", padx=20, pady=10)
         load_frame.grid_columnconfigure(0, weight=1)
+        
+        heading_font = ctk.CTkFont("Calibri", 20, "bold")
+        btn_font = ctk.CTkFont("Calibri", 16, "bold")
+        label_font = ctk.CTkFont("Calibri", 16)
+        message_font = ctk.CTkFont("Calibri", 16)
 
         # Simulated LabelFrame title
         ctk.CTkLabel(
             load_frame,
             text="Load File",
-            font=("Arial", 14, "bold")
-        ).grid(row=0, column=0, sticky="w",padx=15, pady=(0, 10))
+            font=heading_font
+        ).grid(row=0, column=0, sticky="w",padx=15, pady=(5, 15))
 
         ctk.CTkButton(
             load_frame,
             text="Load File",
-            width=160,
+            width=200,
+            font=btn_font,
             command=self.upload_file
-        ).grid(row=1, column=0, sticky="w", padx=10, pady=(0,10))
+        ).grid(row=1, column=0, sticky="w", padx=15, pady=(0,10))
 
         self.status_label = ctk.CTkLabel(
             load_frame,
             text="No file selected",
+            font=label_font,
             text_color="gray"
         )
         self.status_label.grid(row=1, column=1, padx=15, sticky="w")
@@ -279,51 +76,56 @@ class RTORecoApp(ctk.CTk):
         ctk.CTkLabel(
             info_frame,
             text="Workbook Info",
-            font=("Arial", 14, "bold")
-        ).grid(row=0, column=0, sticky="w", padx=10, pady=(0, 10))
+            font=heading_font
+        ).grid(row=0, column=0, sticky="w", padx=15, pady=(5, 15))
 
         self.selected_sheet = ctk.StringVar()
 
-        ctk.CTkLabel(info_frame, text="Sheet:").grid(row=1, column=0,padx=15, sticky="w")
+        ctk.CTkLabel(info_frame, text="Sheet:", font=label_font).grid(row=1, column=0,padx=15, sticky="w")
 
         self.sheet_dropdown = ctk.CTkComboBox(
             info_frame,
             values=[],
             variable=self.selected_sheet,
-            width=250
+            height=30,
+            width=250,
+            state="readonly",
+            command=self.on_sheet_change
         )
-        self.sheet_dropdown.grid(row=2, column=0, sticky="w",padx=15, pady=(5, 10))
+        self.sheet_dropdown.grid(row=2, column=0, sticky="w",padx=15, pady=(5, 5))
+        # self.sheet_dropdown.bind("<<ComboboxSelected>>",self.on_sheet_change)
 
         self.rows_var = ctk.StringVar(value="Number of Rows: -")
         self.cols_var = ctk.StringVar(value="Number of Columns: -")
 
-        ctk.CTkLabel(info_frame, textvariable=self.rows_var).grid(row=1, column=1, sticky="w",pady=(2,0))
-        ctk.CTkLabel(info_frame, textvariable=self.cols_var).grid(row=2, column=1, sticky="w",pady=(2,0))
+        ctk.CTkLabel(info_frame, textvariable=self.rows_var, font=label_font).grid(row=1, column=1, sticky="w",pady=(2,0))
+        ctk.CTkLabel(info_frame, textvariable=self.cols_var, font=label_font).grid(row=2, column=1, sticky="w",pady=(2,0))
 
-        ctk.CTkLabel(info_frame, text="Headers:").grid(row=3, column=0, sticky="w", padx=10, pady=(10, 2))
+        ctk.CTkLabel(info_frame, text="Headers:",font=label_font).grid(row=3, column=0, sticky="w", padx=15, pady=(10, 2))
 
-        self.headers_text = ctk.CTkTextbox(info_frame, height=80)
-        self.headers_text.grid(row=4, column=0, columnspan=2, sticky="ew", padx=10, pady=(0,10))
+        self.headers_text = ctk.CTkTextbox(info_frame, height=80,font=message_font)
+        self.headers_text.grid(row=4, column=0, columnspan=2, sticky="ew", padx=15, pady=(0,10))
         self.headers_text.configure(state="disabled")
 
         # ================= DEALERSHIP FRAME =================
         dealer_frame = ctk.CTkFrame(self)
-        dealer_frame.grid(row=2, column=0, sticky="w", padx=20, pady=10)
+        dealer_frame.grid(row=2, column=0, sticky="nw", padx=20, pady=10)
 
         ctk.CTkLabel(
             dealer_frame,
             text="Select Dealership",
-            font=("Arial", 14, "bold")
-        ).grid(row=0, column=0, sticky="w", padx=10, pady=(0, 10))
+            font=heading_font
+        ).grid(row=0, column=0, sticky="n", padx=10, pady=(5, 5))
 
         self.selected_dealer = ctk.StringVar()
 
-        ctk.CTkRadioButton(dealer_frame, text="BR Hyundai", variable=self.selected_dealer, value="BR").grid(row=1, column=0, sticky="w",padx=10)
-        ctk.CTkRadioButton(dealer_frame, text="SAS Hyundai", variable=self.selected_dealer, value="SAS").grid(row=2, column=0, sticky="w",padx=10)
-        ctk.CTkRadioButton(dealer_frame, text="JSV Hyundai", variable=self.selected_dealer, value="JSV").grid(row=3, column=0, sticky="w",padx=10,pady=(0,10))
+        ctk.CTkRadioButton(dealer_frame, text="BR Hyundai", variable=self.selected_dealer, value="BR",font=label_font).grid(row=1, column=0, sticky="w",padx=10)
+        ctk.CTkRadioButton(dealer_frame, text="SAS Hyundai", variable=self.selected_dealer, value="SAS",font=label_font).grid(row=2, column=0, sticky="w",padx=10)
+        ctk.CTkRadioButton(dealer_frame, text="JSV Hyundai", variable=self.selected_dealer, value="JSV",font=label_font).grid(row=3, column=0, sticky="w",padx=10,pady=(0,10))
 
-        self.grid_columnconfigure(1,weight=1)
-        self.grid_columnconfigure(2,weight=0)
+        self.grid_columnconfigure(0,weight=0)  # Dealership selector
+        self.grid_columnconfigure(1,weight=1)  # Message box
+        self.grid_columnconfigure(2,weight=0)  # Actions
 
         # ================= MESSAGES FRAME =================
         message_frame = ctk.CTkFrame(self)
@@ -335,17 +137,20 @@ class RTORecoApp(ctk.CTk):
             pady=10
         )
         message_frame.grid_columnconfigure(0, weight=1)
+        message_frame.grid_rowconfigure(0, weight=1)
 
         ctk.CTkLabel(
             message_frame,
             text="Messages",
-            font=("Arial", 14, "bold")
-        ).grid(row=0, column=0, sticky="ew", padx=10, pady=(5, 6))
+            font=heading_font
+        ).grid(row=0, column=0, sticky="w", padx=10, pady=(5,10))
 
         self.message_box = ctk.CTkTextbox(
             message_frame,
-            height=90,          # similar visual weight to Headers
-            wrap="word"
+            height=140,         # similar visual weight to Headers
+            wrap="word",
+            font=message_font
+            
         )
         self.message_box.grid(
             row=1,
@@ -368,25 +173,28 @@ class RTORecoApp(ctk.CTk):
         ctk.CTkLabel(
             action_frame,
             text="Actions",
-            font=("Arial", 14, "bold")
+            font=heading_font
         ).grid(row=0, column=0, sticky="w", padx=10, pady=(5, 8))
         
-        ctk.CTkButton(
-            action_frame,
-            text="Process Data",
-            width=160,
-            command=self.process_data
-        ).grid(row=1, column=0, padx=10, pady=(0, 8))
+        # ctk.CTkButton(
+        #     action_frame,
+        #     text="Process Data",
+        #     width=160,
+        #     font=button_font,
+        #     command=self.process_data
+        # ).grid(row=1, column=0, padx=10, pady=(0, 8))
 
         ctk.CTkButton(
             action_frame,
             text="Get RTO Reco",
             width=160,
             fg_color="green",
+            font=btn_font,
             hover_color="#0f8a0f",
             command=self.get_rto_reco
-        ).grid(row=2, column=0, padx=10, pady=(0, 10))
+        ).grid(row=1, column=0, padx=10, pady=(0, 10))
 
+    # ---- Utility functions for UI ----
     def clear_messages(self):
         self.message_box.configure(state="normal")
         self.message_box.delete("1.0", "end")
@@ -398,9 +206,7 @@ class RTORecoApp(ctk.CTk):
         self.message_box.insert("end", text + "\n")
         self.message_box.configure(state="disabled")
         self.message_box.see("end")
-    
-    def process_data(self):
-        pass
+
     def get_rto_reco(self):
         if not hasattr(self,"file_path") or not self.file_path:
             self.show_message("Please load an Excel file first.")
@@ -444,12 +250,104 @@ class RTORecoApp(ctk.CTk):
         file_path = filedialog.askopenfilename(
             filetypes=[("Excel Files", "*.xlsx *.xls")]
         )
-        if file_path:
-            self.file_path=file_path
-            self.status_label.configure(
-                text=f"Loaded: {os.path.basename(file_path)}",
-                text_color='green'
+        if not file_path:
+            return
+        self.file_path=file_path
+        self.status_label.configure(
+            text=f"Loaded: {os.path.basename(file_path)}",
+            text_color='green'
+        )
+        # Load workbook ONCE
+        self.sheets = pd.read_excel(self.file_path,sheet_name=None)
+        sheet_names = list(self.sheets.keys())
+
+        # Populate combobox
+        self.sheet_dropdown.configure(values=sheet_names)
+
+        # Auto-select first sheet
+        if sheet_names:
+            self.selected_sheet.set(sheet_names[0])
+            self.load_sheet(sheet_names[0])
+
+
+    # ---- Workbook info methods ----
+    def load_sheet(self, sheet_name):
+        self.df = self.sheets[sheet_name]
+
+        # Update info 
+        self.rows_var.set(f"Number of Rows: {self.df.shape[0]}")
+        self.cols_var.set(f"Number of Columns: {self.df.shape[1]}")
+
+        headers = ", ".join(self.df.columns.astype(str))
+
+        self.headers_text.configure(state="normal",text_color="green")
+        self.headers_text.delete("1.0", "end")
+        self.headers_text.insert("end",headers)
+        self.headers_text.configure(state="disabled")
+
+        #Schema inspection
+        self.inspect_headers(self.df, sheet_name)
+    
+    def on_sheet_change(self, event=None):
+        sheet_name = self.selected_sheet.get()
+        if sheet_name:
+            self.load_sheet(sheet_name)
+
+    def inspect_headers(self, df: pd.DataFrame, sheet_name: str):
+        """
+        Warn user about schema issues:
+        - Leading/trailing spaces
+        - Case mismatches
+        - Missing expected columns
+        """
+        self.clear_messages()
+        self.show_message(f"🔍 Inspecting schema for sheet: {sheet_name}")
+
+        raw_headers = list(df.columns)
+        stripped_headers = [h.strip() for h in raw_headers]
+
+        # 1️⃣ Leading / trailing whitespace
+        whitespace_issues = [
+            h for h, s in zip(raw_headers, stripped_headers) if h != s
+        ]
+        if whitespace_issues:
+            self.show_message(
+                "⚠ Headers with leading/trailing spaces:\n  - "
+                + "\n  - ".join(whitespace_issues)
             )
+
+        # 2️⃣ Case mismatches
+        case_issues = [
+            h for h in raw_headers
+            if h.strip().lower() != h.strip()
+        ]
+        if case_issues:
+            self.show_message(
+                "⚠ Headers with inconsistent casing:\n  - "
+                + "\n  - ".join(case_issues)
+            )
+
+        # 3️⃣ Expected schema check (if known)
+        expected = EXPECTED_SCHEMAS.get(sheet_name)
+        if expected:
+            normalized_actual = {h.strip() for h in raw_headers}
+            missing = expected - normalized_actual
+            extra = normalized_actual - expected
+
+            if missing:
+                self.show_message(
+                    "⚠ Missing expected columns:\n  - "
+                    + "\n  - ".join(missing)
+                )
+
+            if extra:
+                self.show_message(
+                    "ℹ Extra columns found (will be ignored later):\n  - "
+                    + "\n  - ".join(extra)
+                )
+
+
+
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("Light")
