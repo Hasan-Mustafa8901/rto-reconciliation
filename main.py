@@ -301,14 +301,43 @@ class RTORecoApp(ctk.CTk):
         - Missing expected columns
         """
         self.clear_messages()
-        self.show_message(f"🔍 Inspecting schema for sheet: {sheet_name}")
+        expected = EXPECTED_SCHEMAS.get(sheet_name)
+
+        # If schema is not defined for this sheet, skip inspection
+        if not expected:
+            self.show_message(
+                f"ℹ No expected schema defined for sheet: {sheet_name}"
+            )
+            return
+        
+        self.show_message(f"Inspecting schema for sheet: {sheet_name}")
 
         raw_headers = list(df.columns)
         stripped_headers = [h.strip() for h in raw_headers]
 
-        # 1️⃣ Leading / trailing whitespace
+        # Normalized lookup maps
+        actual_normalized = {h.strip(): h for h in raw_headers}
+        actual_lower = {h.strip().lower(): h for h in raw_headers}
+
+        # Missing Expected columns
+        missing = [
+            col for col in expected
+            if col not in actual_normalized
+            and col.lower() not in actual_lower
+            ]
+        
+        if missing:
+            self.show_message(
+                "⚠ Missing expected columns:\n  - "
+                    + "\n  - ".join(missing)
+            )
+
+        # Leading / trailing whitespace
         whitespace_issues = [
-            h for h, s in zip(raw_headers, stripped_headers) if h != s
+            actual_normalized[col]
+            for col in expected
+            if col in actual_normalized
+            and actual_normalized[col] != col
         ]
         if whitespace_issues:
             self.show_message(
@@ -316,38 +345,29 @@ class RTORecoApp(ctk.CTk):
                 + "\n  - ".join(whitespace_issues)
             )
 
-        # 2️⃣ Case mismatches
-        case_issues = [
-            h for h in raw_headers
-            if h.strip().lower() != h.strip()
-        ]
+        # Case mismatches
+        case_issues = []
+        for col in expected:
+            actual = actual_lower.get(col.lower())
+            if actual and actual.strip() != col:
+                case_issues.append(actual)
+
         if case_issues:
             self.show_message(
                 "⚠ Headers with inconsistent casing:\n  - "
                 + "\n  - ".join(case_issues)
             )
-
-        # 3️⃣ Expected schema check (if known)
-        expected = EXPECTED_SCHEMAS.get(sheet_name)
-        if expected:
-            normalized_actual = {h.strip() for h in raw_headers}
-            missing = expected - normalized_actual
-            extra = normalized_actual - expected
-
-            if missing:
-                self.show_message(
-                    "⚠ Missing expected columns:\n  - "
-                    + "\n  - ".join(missing)
-                )
-
-            if extra:
-                self.show_message(
-                    "ℹ Extra columns found (will be ignored later):\n  - "
-                    + "\n  - ".join(extra)
-                )
-
-
-
+        # Extra columns
+        expected_lower = {c.lower() for c in expected}
+        extra = [
+            h for h in raw_headers
+            if h.strip().lower() not in expected_lower
+        ]
+        if extra:
+            self.show_message(
+                "ℹ Extra columns found (will be ignored later):\n  - "
+                + "\n  - ".join(extra)
+            )
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("Light")
