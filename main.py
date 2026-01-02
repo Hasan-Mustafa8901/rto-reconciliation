@@ -19,6 +19,7 @@ EXPECTED_SCHEMAS = {
             "Vehicle Registration Number",
             "Owner Name",
             "Chassis Number",
+            "VIN Number"
         },
     }
 
@@ -31,6 +32,7 @@ class RTORecoApp(ctk.CTk):
         self.geometry("1000x600")
 
         self.df = None
+        self.output_path = None
 
         # Root grid
         self.grid_columnconfigure(0, weight=1)
@@ -176,23 +178,23 @@ class RTORecoApp(ctk.CTk):
             font=heading_font
         ).grid(row=0, column=0, sticky="w", padx=10, pady=(5, 8))
         
-        # ctk.CTkButton(
-        #     action_frame,
-        #     text="Process Data",
-        #     width=160,
-        #     font=button_font,
-        #     command=self.process_data
-        # ).grid(row=1, column=0, padx=10, pady=(0, 8))
+        ctk.CTkButton(
+            action_frame,
+            text="Choose Output Location",
+            width=180,
+            font=btn_font,
+            command=self.choose_output_dir
+        ).grid(row=1, column=0, padx=10, pady=(0, 8))
 
         ctk.CTkButton(
             action_frame,
             text="Get RTO Reco",
-            width=160,
+            width=180,
             fg_color="green",
             font=btn_font,
             hover_color="#0f8a0f",
             command=self.get_rto_reco
-        ).grid(row=1, column=0, padx=10, pady=(0, 10))
+        ).grid(row=2, column=0, padx=10, pady=(0, 10))
 
     # ---- Utility functions for UI ----
     def clear_messages(self):
@@ -229,6 +231,7 @@ class RTORecoApp(ctk.CTk):
         result = run_reconciliation_pipeline(
             input_file_path=self.file_path,
             dealership=self.selected_dealer.get(),
+            output_dir=self.output_path,
         )
 
         # UI updates must happen on main thread
@@ -243,7 +246,13 @@ class RTORecoApp(ctk.CTk):
         else:
             self.show_message("\n❌ Please fix the above issues and try again.")
 
-
+    def choose_output_dir(self):
+        directory = filedialog.askdirectory()
+        if directory:
+            self.output_path = directory
+            self.show_message(
+                f"📁 Output directory set to:\n{directory}"
+            )
 
     def upload_file(self):
         # pass
