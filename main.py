@@ -95,7 +95,6 @@ class RTORecoApp(ctk.CTk):
             command=self.on_sheet_change
         )
         self.sheet_dropdown.grid(row=2, column=0, sticky="w",padx=15, pady=(5, 5))
-        # self.sheet_dropdown.bind("<<ComboboxSelected>>",self.on_sheet_change)
 
         self.rows_var = ctk.StringVar(value="Number of Rows: -")
         self.cols_var = ctk.StringVar(value="Number of Columns: -")

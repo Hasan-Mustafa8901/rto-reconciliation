@@ -51,25 +51,59 @@ def normalize_chassis(series: pd.Series) -> pd.Series:
         .replace({"nan": None})
     )
 
-def resolve_chassis_and_vin(value: str):
-    '''
-    Resolves whether the value is a full chassis number or a VIN.
-    :param value: Description
-    :type value: str
-    '''
-    if value is None:
-        return None, None, "INVALID"
-    
-    value = str(value).strip().upper()
+def clean_identifier(value) -> Optional[str]:
+    """
+    Cleans raw identifier values coming from Excel.
+    Handles:
+    - float values with .0
+    - scientific notation
+    - leading zeros
+    - NaN / None
+    """
+    if pd.isna(value):
+        return None
 
-    if len(value) > 6:
-        return value, value[-6:], "CHASSIS"
-    
-    if len(value) < 6:
-        return None, value.zfill(6), "VIN"
-    if len(value) == 6:
-        return None, value, "VIN"
-    
+    # Convert to string safely
+    val = str(value).strip()
+
+    if val.lower() in ("nan", "none", ""):
+        return None
+
+    # Remove trailing .0 (Excel float issue)
+    if val.endswith(".0"):
+        val = val[:-2]
+
+    # Remove scientific notation artifacts
+    if "e+" in val.lower():
+        try:
+            val = f"{int(float(val))}"
+        except ValueError:
+            return None
+
+    return val.upper()
+
+
+def resolve_chassis_and_vin(raw_value: Optional[str]):
+    """
+    Canonical identifier resolver.
+
+    Returns:
+    (chassis_no, vin, id_source)
+    """
+
+    if not raw_value:
+        return None, None, "INVALID"
+
+    val = raw_value
+
+    # Chassis: longer than 6 chars
+    if len(val) > 6:
+        return val, val[-6:], "CHASSIS"
+
+    # VIN: exactly or less than 6 digits
+    if len(val) <= 6 and val.isdigit():
+        return None, val.zfill(6), "VIN"
+
     return None, None, "INVALID"
 
 
@@ -93,9 +127,9 @@ def normalize_rto_data(df: pd.DataFrame) -> pd.DataFrame:
     df["registration_no_rto"] = normalize_string(df["registration_no_rto"])
     df["owner_name_rto"] = normalize_string(df["owner_name_rto"])
     df["rto_code"] = df["registration_no_rto"].str[0:4]
-    df["chassis_no_rto"] = normalize_chassis(df["chassis_no_rto"])
+    df["chassis_no_rto"] = df["chassis_no_rto"].apply(clean_identifier)
     df["vin_rto"] = df["chassis_no_rto"].str[-6:]
-    df["id_source"] = "CHASSIS"
+    # df["id_source"] = "CHASSIS"
 
     return df
 
@@ -103,174 +137,240 @@ def normalize_rto_data(df: pd.DataFrame) -> pd.DataFrame:
 # =========================
 # Delivery Normalization
 # =========================
-## Refactor break into small mehtods
-def normalize_delivery_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Normalize and project Delivery Data.
-    Handles:
-    - Chassis Number column
-    - VIN Number column
-    """
-    # ---- detect identifier column ----
-    if "Chassis Number" in df.columns:
-        identifier_col = "Chassis Number"
-    elif "VIN Number" in df.columns:
-        identifier_col = "VIN Number"
-    else:
-        raise ValueError(
-            "Delivery Data must contain either 'Chassis Number' or 'VIN Number'"
-        )
+# ## Refactor break into small mehtods
+# def normalize_delivery_data(df: pd.DataFrame) -> pd.DataFrame:
+#     """
+#     Normalize and project Delivery Data.
+#     Handles:
+#     - Chassis Number column
+#     - VIN Number column
+#     """
+#     # ---- detect identifier column ----
+#     if "Chassis Number" in df.columns:
+#         identifier_col = "Chassis Number"
+#     elif "VIN Number" in df.columns:
+#         identifier_col = "VIN Number"
+#     else:
+#         raise ValueError(
+#             "Delivery Data must contain either 'Chassis Number' or 'VIN Number'"
+#         )
 
-    # ---- select required columns dynamically ----
-    base_cols = ["Delivery Date", "Customer Name", "Showroom", identifier_col]
-    df = df[base_cols].copy()
+#     # ---- select required columns dynamically ----
+#     base_cols = ["Delivery Date", "Customer Name", "Showroom", identifier_col]
+#     df = df[base_cols].copy()
 
-    # ---- rename non-identifier columns ----
-    df.rename(
-        columns={
-            "Delivery Date": "delivery_date_del",
-            "Customer Name": "customer_name_del",
-            "Showroom": "showroom_del",
-        },
-        inplace=True,
-    )
+#     # ---- rename non-identifier columns ----
+#     df.rename(
+#         columns={
+#             "Delivery Date": "delivery_date_del",
+#             "Customer Name": "customer_name_del",
+#             "Showroom": "showroom_del",
+#         },
+#         inplace=True,
+#     )
 
-    # ---- normalize basic fields ----
-    df["delivery_date_del"] = normalize_string(df["delivery_date_del"])
-    df["customer_name_del"] = normalize_string(df["customer_name_del"])
-    df["showroom_del"] = normalize_string(df["showroom_del"])
+#     # ---- normalize basic fields ----
+#     df["delivery_date_del"] = normalize_string(df["delivery_date_del"])
+#     df["customer_name_del"] = normalize_string(df["customer_name_del"])
+#     df["showroom_del"] = normalize_string(df["showroom_del"])
 
-    # ---- normalize identifier ----
-    raw_id = (
-        df[identifier_col]
-        .astype(str)
-        .str.strip()
-        .str.upper()
-    )
+#     # ---- normalize identifier ----
+#     raw_id = (
+#         df[identifier_col]
+#         .astype(str)
+#         .str.strip()
+#         .str.upper()
+#     )
 
-    df["raw_identifier"] = raw_id
+#     df["raw_identifier"] = raw_id
 
-    def resolve_identifier(val):
-        if not val or val == "NAN":
-            return None, None, "INVALID"
+#     def resolve_identifier(val):
+#         if not val or val == "NAN":
+#             return None, None, "INVALID"
 
-        if len(val) > 6:
-            return val, val[-6:], "CHASSIS"
+#         if len(val) > 6:
+#             return val, val[-6:], "CHASSIS"
         
-        if len(val) < 6:
-            return None, val.zfill(6)[0:6], "VIN"
+#         if len(val) < 6:
+#             return None, val.zfill(6)[0:6], "VIN"
 
-        if len(val) == 6:
-            return None, val, "VIN"
+#         if len(val) == 6:
+#             return None, val, "VIN"
 
-        return None, None, "INVALID"
+#         return None, None, "INVALID"
 
-    resolved = raw_id.apply(resolve_identifier)
+#     resolved = raw_id.apply(resolve_identifier)
 
-    df["chassis_no_del"] = resolved.apply(lambda x: x[0])
-    df["vin_del"] = resolved.apply(lambda x: x[1])
-    df["id_source"] = resolved.apply(lambda x: x[2])
+#     df["chassis_no_del"] = resolved.apply(lambda x: x[0])
+#     df["vin_del"] = resolved.apply(lambda x: x[1])
+#     df["id_source"] = resolved.apply(lambda x: x[2])
 
-    # Drop the raw identifier column
-    df.drop(columns=[identifier_col], inplace=True)
+#     # Drop the raw identifier column
+#     df.drop(columns=[identifier_col], inplace=True)
 
-    return df
+#     return df
 
-def normalize_previous_delivery_data(df: pd.DataFrame) -> pd.DataFrame:
+# def normalize_previous_delivery_data(df: pd.DataFrame) -> pd.DataFrame:
+#     """
+#     Normalize and project Previous Delivery Data.
+
+#     Row-level identifier resolution:
+#     - Prefer Chassis Number if present
+#     - Else fallback to VIN Number
+#     """
+
+#     # ---- required base columns ----
+#     required_cols = {"Delivery Date", "Customer Name", "Showroom"}
+#     identifier_cols = {"Chassis Number", "VIN Number"}
+
+#     missing = required_cols - set(df.columns)
+#     if missing:
+#         raise ValueError(f"Missing required columns: {missing}")
+
+#     if not identifier_cols.intersection(df.columns):
+#         raise ValueError(
+#             "Delivery Data must contain at least one of: 'Chassis Number', 'VIN Number'"
+#         )
+
+#     # ---- select available columns ----
+#     cols_to_select = list(required_cols | identifier_cols)
+#     df = df[cols_to_select].copy()
+
+#     # ---- rename base columns ----
+#     df.rename(
+#         columns={
+#             "Delivery Date": "delivery_date_prev",
+#             "Customer Name": "customer_name_prev",
+#             "Showroom": "showroom_prev",
+#         },
+#         inplace=True,
+#     )
+
+#     # ---- normalize base fields ----
+#     df["delivery_date_prev"] = normalize_string(df["delivery_date_prev"])
+#     df["customer_name_prev"] = normalize_string(df["customer_name_prev"])
+#     df["showroom_prev"] = normalize_string(df["showroom_prev"])
+
+#     # ---- normalize identifiers (row-level fallback) ----
+#     chassis_series = (
+#         df["Chassis Number"].astype(str).str.strip().str.upper()
+#         if "Chassis Number" in df.columns
+#         else None
+#     )
+
+#     vin_series = (
+#         df["VIN Number"].astype(str).str.strip().str.upper()
+#         if "VIN Number" in df.columns
+#         else None
+#     )
+
+#     def resolve_identifier(row):
+#         chassis = (
+#             chassis_series.loc[row.name]
+#             if chassis_series is not None
+#             else None
+#         )
+#         vin = (
+#             vin_series.loc[row.name]
+#             if vin_series is not None
+#             else None
+#         )
+
+#         # clean null-like values
+#         if chassis in ("", "NAN", "NONE"):
+#             chassis = None
+#         if vin in ("", "NAN", "NONE"):
+#             vin = None
+
+#         # Prefer chassis if present
+#         if chassis:
+#             return chassis, chassis[-6:], "CHASSIS"
+
+#         # Fallback to VIN
+#         if vin:
+#             vin = vin.zfill(6)
+#             return None, vin, "VIN"
+
+#         # Invalid
+#         return None, None, "INVALID"
+
+#     resolved = df.apply(resolve_identifier, axis=1)
+
+#     df["chassis_no_prev"] = resolved.apply(lambda x: x[0])
+#     df["vin_prev"] = resolved.apply(lambda x: x[1])
+#     df["id_source"] = resolved.apply(lambda x: x[2])
+
+#     # ---- drop raw identifier columns ----
+#     drop_cols = [c for c in ["Chassis Number", "VIN Number"] if c in df.columns]
+#     df.drop(columns=drop_cols, inplace=True)
+
+#     return df
+
+def normalize_delivery_data(
+    df: pd.DataFrame,
+    *,
+    suffix: str,
+) -> pd.DataFrame:
     """
-    Normalize and project Previous Delivery Data.
+    Normalize delivery-like data (current or previous).
 
-    Row-level identifier resolution:
-    - Prefer Chassis Number if present
-    - Else fallback to VIN Number
+    suffix:
+        "del"  -> current delivery
+        "prev" -> previous delivery
     """
 
-    # ---- required base columns ----
     required_cols = {"Delivery Date", "Customer Name", "Showroom"}
-    identifier_cols = {"Chassis Number", "VIN Number"}
+    id_cols = {"Chassis Number", "VIN Number"}
 
     missing = required_cols - set(df.columns)
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
 
-    if not identifier_cols.intersection(df.columns):
+    if not id_cols.intersection(df.columns):
         raise ValueError(
-            "Delivery Data must contain at least one of: 'Chassis Number', 'VIN Number'"
+            "Delivery data must contain at least one of: "
+            "'Chassis Number' or 'VIN Number'"
         )
 
-    # ---- select available columns ----
-    cols_to_select = list(required_cols | identifier_cols)
-    df = df[cols_to_select].copy()
+    df = df.copy()
 
-    # ---- rename base columns ----
-    df.rename(
-        columns={
-            "Delivery Date": "delivery_date_prev",
-            "Customer Name": "customer_name_prev",
-            "Showroom": "showroom_prev",
-        },
-        inplace=True,
-    )
+    # -----------------------------
+    # Normalize base fields
+    # -----------------------------
+    df[f"delivery_date_{suffix}"] = normalize_string(df["Delivery Date"])
+    df[f"customer_name_{suffix}"] = normalize_string(df["Customer Name"])
+    df[f"showroom_{suffix}"] = normalize_string(df["Showroom"])
 
-    # ---- normalize base fields ----
-    df["delivery_date_prev"] = normalize_string(df["delivery_date_prev"])
-    df["customer_name_prev"] = normalize_string(df["customer_name_prev"])
-    df["showroom_prev"] = normalize_string(df["showroom_prev"])
+    # -----------------------------
+    # Resolve identifiers (row-wise)
+    # -----------------------------
+    def resolve_row(row):
+        chassis = clean_identifier(row.get("Chassis Number"))
+        vin = clean_identifier(row.get("VIN Number"))
 
-    # ---- normalize identifiers (row-level fallback) ----
-    chassis_series = (
-        df["Chassis Number"].astype(str).str.strip().str.upper()
-        if "Chassis Number" in df.columns
-        else None
-    )
+        raw = chassis or vin
+        return resolve_chassis_and_vin(raw)
 
-    vin_series = (
-        df["VIN Number"].astype(str).str.strip().str.upper()
-        if "VIN Number" in df.columns
-        else None
-    )
+    resolved = df.apply(resolve_row, axis=1)
 
-    def resolve_identifier(row):
-        chassis = (
-            chassis_series.loc[row.name]
-            if chassis_series is not None
-            else None
-        )
-        vin = (
-            vin_series.loc[row.name]
-            if vin_series is not None
-            else None
-        )
+    df[f"chassis_no_{suffix}"] = resolved.apply(lambda x: x[0])
+    df[f"vin_{suffix}"] = resolved.apply(lambda x: x[1])
+    df[f"id_source_{suffix}"] = resolved.apply(lambda x: x[2])
 
-        # clean null-like values
-        if chassis in ("", "NAN", "NONE"):
-            chassis = None
-        if vin in ("", "NAN", "NONE"):
-            vin = None
-
-        # Prefer chassis if present
-        if chassis:
-            return chassis, chassis[-6:], "CHASSIS"
-
-        # Fallback to VIN
-        if vin:
-            vin = vin.zfill(6)
-            return None, vin, "VIN"
-
-        # Invalid
-        return None, None, "INVALID"
-
-    resolved = df.apply(resolve_identifier, axis=1)
-
-    df["chassis_no_prev"] = resolved.apply(lambda x: x[0])
-    df["vin_prev"] = resolved.apply(lambda x: x[1])
-    df["id_source"] = resolved.apply(lambda x: x[2])
-
-    # ---- drop raw identifier columns ----
-    drop_cols = [c for c in ["Chassis Number", "VIN Number"] if c in df.columns]
-    df.drop(columns=drop_cols, inplace=True)
+    # -----------------------------
+    # Drop raw columns
+    # -----------------------------
+    drop_cols = [
+        "Delivery Date",
+        "Customer Name",
+        "Showroom",
+        "Chassis Number",
+        "VIN Number",
+    ]
+    df.drop(columns=[c for c in drop_cols if c in df.columns], inplace=True)
 
     return df
+
 
 # =========================
 # Pipeline Entry: Projection
@@ -289,12 +389,14 @@ def normalize_and_project(
 
     normalized = {
         "rto": normalize_rto_data(workbook[rto_sheet]),
-        "delivery_current": normalize_delivery_data(workbook[delivery_current_sheet]),
+        "delivery_current": normalize_delivery_data(workbook[delivery_current_sheet],
+                                                    suffix="del"),
     }
 
     if delivery_previous_sheet and delivery_previous_sheet in workbook:
-        normalized["delivery_previous"] = normalize_previous_delivery_data(
-            workbook[delivery_previous_sheet]
+        normalized["delivery_previous"] = normalize_delivery_data(
+            workbook[delivery_previous_sheet],
+            suffix="prev",
         )
 
     return normalized

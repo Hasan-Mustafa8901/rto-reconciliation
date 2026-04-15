@@ -17,7 +17,8 @@ from backend.reconciliation.reconcile import reconcile_delivery_rto
 
 # --- Summaries ---
 from backend.post_reconciliation.attactments import build_attachments
-# from backend.post_reconciliation.summary import build_reconciliation_summary
+from backend.post_reconciliation.rto_summary import build_rto_summary
+from backend.post_reconciliation.recon_summary import build_reconciliation_summary
 
 # --- Reporting ---
 from backend.io.excel_writer import write_output_workbook
@@ -89,13 +90,20 @@ def run_reconciliation_pipeline(
         messages.append("Building attachments…")
         attachments = build_attachments(recon_result)
 
-        # messages.append("Building RTO summary…")
-        # rto_summary = build_rto_summary(recon_result["rto_recon"])
+        messages.append("Building RTO summary…")
+        rto_summary = build_rto_summary(rto_recon=recon_result["rto_recon"])
+
+        messages.append("Build Reconciliation Summary...")
+        recon_summary = build_reconciliation_summary(
+                delivery_recon=recon_result["delivery_recon"],
+                rto_recon=recon_result["rto_recon"]
+            )
 
         messages.append("Writing output Excel file…")
         output_file = write_output_workbook(
             attachments=attachments,
-            # rto_summary=rto_summary,
+            rto_summary=rto_summary,
+            recon_summary=recon_summary,
             dealership=dealership,
             output_dir=output_dir,
         )
