@@ -181,6 +181,8 @@ C:\Users...\RTO_Reco_Output.xlsx
 
 ---
 
+
+
 # 6. Error Handling
 
 ## "Please load an Excel file first"
@@ -238,3 +240,5 @@ If reconciliation fails:
 3. Run again
 
 If still failing → contact developer with input file.
+
+10. 
