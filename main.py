@@ -22,6 +22,10 @@ EXPECTED_SCHEMAS = {
         "VIN Number",
     },
 }
+PRIMARY_COLOUR = "#16365C"
+PRIMARY_COLOUR_HOVER = "#204A7D"
+SECONDARY_COLOUR = "#EDE8D0"
+ACCENT_COLOUR = "#FFC107"
 
 
 class RTORecoApp(ctk.CTk):
@@ -29,7 +33,7 @@ class RTORecoApp(ctk.CTk):
         super().__init__()
 
         # ---------------- Window ----------------
-        self.title("RTO Reconciliation Tool")
+        self.title("Automobile RTO Reco")
         self.geometry("1000x600")
 
         self.df = None
@@ -37,10 +41,33 @@ class RTORecoApp(ctk.CTk):
 
         # Root grid
         self.grid_columnconfigure(0, weight=1)
+        # ===== Header Frame
+        header_frame = ctk.CTkFrame(
+            self, height=100, fg_color=PRIMARY_COLOUR, corner_radius=0
+        )
+        header_frame.grid(row=0, column=0, columnspan=3, sticky="ew", padx=0, pady=0)
+        ctk.CTkLabel(
+            header_frame,
+            text="Automobile RTO Reconciliation",
+            font=ctk.CTkFont("Calibri", 24, "bold"),
+            text_color=SECONDARY_COLOUR,
+        ).pack()
+        ctk.CTkLabel(
+            header_frame,
+            text="Asija and Associates LLP",
+            font=ctk.CTkFont("Calibri", 16),
+            text_color=SECONDARY_COLOUR,
+        ).pack()
+        ctk.CTkLabel(
+            header_frame,
+            text="Audit and Assurance Vertical",
+            font=ctk.CTkFont("Calibri", 14),
+            text_color=SECONDARY_COLOUR,
+        ).pack()
 
         # ================= LOAD FILE FRAME =================
         load_frame = ctk.CTkFrame(self)
-        load_frame.grid(row=0, column=0, columnspan=3, sticky="ew", padx=20, pady=10)
+        load_frame.grid(row=1, column=0, columnspan=3, sticky="ew", padx=20, pady=10)
         load_frame.grid_columnconfigure(0, weight=1)
 
         heading_font = ctk.CTkFont("Calibri", 20, "bold")
@@ -49,15 +76,17 @@ class RTORecoApp(ctk.CTk):
         message_font = ctk.CTkFont("Calibri", 16)
 
         # Simulated LabelFrame title
-        ctk.CTkLabel(load_frame, text="Load File", font=heading_font).grid(
+        ctk.CTkLabel(load_frame, text="Import File", font=heading_font).grid(
             row=0, column=0, sticky="w", padx=15, pady=(5, 15)
         )
 
         ctk.CTkButton(
             load_frame,
-            text="Load File",
+            text="Import File",
             width=200,
             font=btn_font,
+            fg_color=PRIMARY_COLOUR,
+            hover_color=PRIMARY_COLOUR_HOVER,
             command=self.upload_file,
         ).grid(row=1, column=0, sticky="w", padx=15, pady=(0, 10))
 
@@ -68,7 +97,7 @@ class RTORecoApp(ctk.CTk):
 
         # ================= WORKBOOK INFO FRAME =================
         info_frame = ctk.CTkFrame(self)
-        info_frame.grid(row=1, column=0, columnspan=3, sticky="ew", padx=20, pady=10)
+        info_frame.grid(row=2, column=0, columnspan=3, sticky="ew", padx=20, pady=10)
         info_frame.grid_columnconfigure((0, 1), weight=1)
 
         ctk.CTkLabel(info_frame, text="Workbook Info", font=heading_font).grid(
@@ -114,7 +143,7 @@ class RTORecoApp(ctk.CTk):
 
         # ================= DEALERSHIP FRAME =================
         dealer_frame = ctk.CTkFrame(self)
-        dealer_frame.grid(row=2, column=0, sticky="nw", padx=20, pady=10)
+        dealer_frame.grid(row=3, column=0, sticky="nw", padx=20, pady=10)
 
         ctk.CTkLabel(dealer_frame, text="Select Dealership", font=heading_font).grid(
             row=0, column=0, sticky="n", padx=10, pady=(5, 5)
@@ -136,13 +165,6 @@ class RTORecoApp(ctk.CTk):
             value="SAS",
             font=label_font,
         ).grid(row=2, column=0, sticky="w", padx=10, pady=(0, 15))
-        # ctk.CTkRadioButton(
-        #     dealer_frame,
-        #     text="JSV Hyundai",
-        #     variable=self.selected_dealer,
-        #     value="JSV",
-        #     font=label_font,
-        # ).grid(row=3, column=0, sticky="w", padx=10, pady=(0, 10))
 
         self.grid_columnconfigure(0, weight=0)  # Dealership selector
         self.grid_columnconfigure(1, weight=1)  # Message box
@@ -150,7 +172,7 @@ class RTORecoApp(ctk.CTk):
 
         # ================= MESSAGES FRAME =================
         message_frame = ctk.CTkFrame(self)
-        message_frame.grid(row=2, column=1, sticky="nsew", padx=10, pady=10)
+        message_frame.grid(row=3, column=1, sticky="nsew", padx=10, pady=10)
         message_frame.grid_columnconfigure(0, weight=1)
         message_frame.grid_rowconfigure(0, weight=1)
 
@@ -168,7 +190,7 @@ class RTORecoApp(ctk.CTk):
         self.message_box.configure(state="disabled")
         # ================= ACTIONS FRAME =================
         action_frame = ctk.CTkFrame(self)
-        action_frame.grid(row=2, column=2, sticky="n", padx=(10, 20), pady=10)
+        action_frame.grid(row=3, column=2, sticky="n", padx=(10, 20), pady=10)
 
         ctk.CTkLabel(action_frame, text="Actions", font=heading_font).grid(
             row=0, column=0, sticky="w", padx=10, pady=(5, 8)
@@ -178,6 +200,8 @@ class RTORecoApp(ctk.CTk):
             action_frame,
             text="Choose Output Location",
             width=180,
+            text_color=PRIMARY_COLOUR,
+            fg_color=SECONDARY_COLOUR,
             font=btn_font,
             command=self.choose_output_dir,
         ).grid(row=1, column=0, padx=10, pady=(0, 8))
@@ -186,9 +210,9 @@ class RTORecoApp(ctk.CTk):
             action_frame,
             text="Get RTO Reco",
             width=180,
-            fg_color="green",
+            fg_color=PRIMARY_COLOUR,
+            hover_color=PRIMARY_COLOUR_HOVER,
             font=btn_font,
-            hover_color="#0f8a0f",
             command=self.get_rto_reco,
         ).grid(row=2, column=0, padx=10, pady=(0, 10))
 
