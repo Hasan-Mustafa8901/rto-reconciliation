@@ -83,4 +83,6 @@ RTO_CITY_MAP = {
     "UP94": "Lalitpur",
     "UP95": "Mahoba",
     "UP96": "Chitrakoot",
+    "26BH": "Bharat Series",
+    "25BH": "Bharat Series",
 }
