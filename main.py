@@ -17,6 +17,7 @@ EXPECTED_SCHEMAS = {
     },
     "RTO Data": {
         "Office Name",
+        "Registration Date",
         "Dealer Name",
         "Vehicle Registration Number",
         "Owner Name",
