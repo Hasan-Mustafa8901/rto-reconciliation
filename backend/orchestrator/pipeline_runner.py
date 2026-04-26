@@ -26,7 +26,9 @@ from backend.io.excel_writer import write_output_workbook
 
 class PipelineError(Exception):
     """Raised when the reconciliation pipeline fails."""
+
     pass
+
 
 def run_reconciliation_pipeline(
     *,
@@ -52,15 +54,39 @@ def run_reconciliation_pipeline(
         # 1. Validate input workbook (PATH-BASED)
         # --------------------------------------------------
         messages.append("Validating input workbook…")
-        validation = validate_workbook(str(input_file_path))
+        validation, all_violations = validate_workbook(str(input_file_path))
 
+        # 🔥 ALWAYS show violations FIRST
+        for sheet, v_dict in all_violations.items():
+            messages.append("\n" + "=" * 60)
+            messages.append(f"{sheet.replace('_', ' ').title()}".center(60))
+            messages.append("=" * 60)
+
+            for name, df in v_dict.items():
+                if not df.empty:
+                    messages.append(f"\n>>  {name.replace('_', ' ').title()} ---")
+
+                    table_str = df.to_string(index=False)
+
+                    for line in table_str.split("\n"):
+                        messages.append("  " + line)
+
+                    messages.append(f"... ({len(df)} rows total)")
+
+        # 🚨 THEN handle validation failure
         if not validation.is_valid:
-            error_messages = "\n".join(
-                str(err) for err in validation.errors
-            )
-            raise PipelineError(
-                f"Validation failed:\n{error_messages}"
-            )
+            error_messages = "\n".join(str(err) for err in validation.errors)
+
+            # ❌ DO NOT raise immediately
+            messages.append("\n❌ Validation failed:")
+            messages.append(error_messages)
+
+            return {
+                "success": False,
+                "messages": messages,
+                "output_file": None,
+            }
+
         # --------------------------------------------------
         # 2. Load workbook
         # --------------------------------------------------
@@ -95,9 +121,9 @@ def run_reconciliation_pipeline(
 
         messages.append("Build Reconciliation Summary...")
         recon_summary = build_reconciliation_summary(
-                delivery_recon=recon_result["delivery_recon"],
-                rto_recon=recon_result["rto_recon"]
-            )
+            delivery_recon=recon_result["delivery_recon"],
+            rto_recon=recon_result["rto_recon"],
+        )
 
         messages.append("Writing output Excel file…")
         output_file = write_output_workbook(
@@ -115,13 +141,9 @@ def run_reconciliation_pipeline(
             "messages": messages,
             "output_file": output_file,
         }
-    
+
     except PipelineError as e:
-        return{
-            "success": False,
-            "messages": [str(e)],
-            "output_file": None
-        }
+        return {"success": False, "messages": [str(e)], "output_file": None}
 
     except Exception as e:
         return {
@@ -133,4 +155,3 @@ def run_reconciliation_pipeline(
             ],
             "output_file": None,
         }
-

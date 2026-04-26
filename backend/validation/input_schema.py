@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 # Sheet Name Contracts
@@ -22,11 +22,49 @@ DELIVERY_REQUIRED_COLUMNS = [
     "Chassis Number",
     "Showroom",
 ]
-BH_SERIES_PATTERN = r"^\d{2}BH\d{4}[A-Z]{2}$"
+BH_SERIES_PATTERN = r"^\d{2}BH\d{4}[A-Z]{1}$"
 UP_SERIES_PATTERN = r"^[A-Z]{2}\d{2}[A-Z]{2}\d{4}$"
 CHASSIS_NUMBER_PATTERN = r"^[A-HJ-NPR-Z0-9]{17}$"
 
+
+def build_violation_table(
+    df: pd.DataFrame,
+    mask: pd.Series,
+    columns: list,
+    max_rows: int | None = None,
+) -> pd.DataFrame:
+    """
+    Returns a tabular DataFrame showing rows that caused validation failure.
+    Includes Excel-friendly row numbers.
+    """
+
+    # Filter only violating rows
+    vdf = df.loc[mask, columns].copy()
+
+    # Add row numbers (Excel-style)
+    vdf = vdf.reset_index().rename(columns={"index": "Row"})
+    vdf["Row"] = vdf["Row"] + 2  # adjust for header row
+
+    # Limit rows if needed
+    if max_rows:
+        vdf = vdf.head(max_rows)
+
+    return vdf
+
+
 # Validation Result Models
+def build_violation_message(df, mask, column, base_message, max_examples=None):
+    bad_values = df.loc[mask, column]
+
+    # Get sample values
+    sample_values = bad_values.dropna().astype(str).unique()[:max_examples]
+
+    # Get row numbers (Excel-friendly → +2 for header)
+    if max_examples:
+        row_numbers = (bad_values.index + 2).tolist()[:max_examples]
+    row_numbers = (bad_values.index + 2).tolist()
+
+    return f"{base_message}. Examples: {list(sample_values)} at rows {row_numbers}"
 
 
 class ValidationError:
@@ -74,7 +112,7 @@ def validate_null_column(df, column, sheet, result):
 
 def validate_duplicates(df, column, sheet, result):
     if column in df.columns:
-        mask = df[column].duplicated()
+        mask = df[column].duplicated(keep=False)
         if mask.any():
             result.add_warning(f"Duplicate {column} found in {sheet}")
         return mask
@@ -94,7 +132,7 @@ def validate_length(df, column, max_len, sheet, result):
     if column in df.columns:
         mask = df[column].astype(str).str.len().gt(max_len)
         if mask.any():
-            result.add_warning(f"Some {column} exceed {max_len} characters in {sheet}")
+            result.add_warning(f"{column} length exceeds {max_len} in {sheet}")
         return mask
     return pd.Series(False, index=df.index)
 
@@ -129,7 +167,9 @@ def validate_rto_sheet(df: pd.DataFrame, result: ValidationResult):
         "Invalid Chassis Number format in RTO Sheet",
     )
     if mask.any():
-        violations["invalid_chassis_format"] = df[mask]
+        violations["invalid_chassis_format"] = build_violation_table(
+            df, mask, ["Chassis Number", "Vehicle Registration Number"]
+        )
 
     # --- Vehicle Registration Number
     mask = validate_null_column(df, "Vehicle Registration Number", sheet, result)
@@ -138,7 +178,9 @@ def validate_rto_sheet(df: pd.DataFrame, result: ValidationResult):
 
     mask = validate_duplicates(df, "Vehicle Registration Number", sheet, result)
     if mask.any():
-        violations["duplicate_vrn"] = df[mask]
+        violations["duplicate_vrn"] = build_violation_table(
+            df, mask, ["Vehicle Registration Number"]
+        )
 
     mask = validate_length(df, "Vehicle Registration Number", 10, sheet, result)
     if mask.any():
@@ -153,7 +195,9 @@ def validate_rto_sheet(df: pd.DataFrame, result: ValidationResult):
         "Invalid Vehicle Registration Number format in RTO Sheet",
     )
     if mask.any():
-        violations["invalid_vrn_format"] = df[mask]
+        violations["invalid_vrn_format"] = build_violation_table(
+            df, mask, ["Vehicle Registration Number", "Owner Name"]
+        )
 
     return violations
 
@@ -184,7 +228,9 @@ def validate_delivery_sheet(
         f"Invalid Chassis Number format in {sheet_name}",
     )
     if mask.any():
-        violations["invalid_chassis_format"] = df[mask]
+        violations["invalid_chassis_format"] = build_violation_table(
+            df, mask, ["Customer Name", "Chassis Number"]
+        )
 
     # --- (Optional but practical) Delivery Date checks
     if "Delivery Date" in df.columns:
@@ -206,8 +252,9 @@ def validate_delivery_sheet(
 # Pipeline Entry: Validation
 
 
-def validate_workbook(file_path: str) -> ValidationResult:
+def validate_workbook(file_path: str) -> tuple[ValidationResult, dict]:
     result = ValidationResult()
+    all_violations = {}
 
     # Load
     workbook = load_workbook(file_path)
@@ -225,17 +272,21 @@ def validate_workbook(file_path: str) -> ValidationResult:
         )
 
     if not result.is_valid:
-        return result
+        return result, all_violations
 
-    validate_rto_sheet(workbook[RTO_SHEET_NAME], result)
+    rto_violations = validate_rto_sheet(workbook[RTO_SHEET_NAME], result)
+    all_violations["rto"] = rto_violations
 
-    validate_delivery_sheet(
+    delivery_violations = validate_delivery_sheet(
         workbook[DELIVERY_CURRENT_SHEET_NAME], DELIVERY_CURRENT_SHEET_NAME, result
     )
+    all_violations["delivery"] = delivery_violations
+
     # Optional previous month delivery sheet
     if DELIVERY_PREVIOUS_SHEET_NAME in workbook:
-        validate_delivery_sheet(
+        previous_violations = validate_delivery_sheet(
             workbook[DELIVERY_PREVIOUS_SHEET_NAME], DELIVERY_PREVIOUS_SHEET_NAME, result
         )
+        all_violations["delivery_previous"] = previous_violations
 
-    return result
+    return result, all_violations

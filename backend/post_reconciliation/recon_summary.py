@@ -121,7 +121,7 @@ def build_reconciliation_summary(
                 "Delivered From Territories (Non UP 32 No.)",
                 "",
                 non_up32.shape[0],
-                "RTO Records",
+                "",
             ),
             ("Delivered Last Month", "", prev_delivery.shape[0], ""),
             ("Final difference (Refer to Attachment-2) ", "", missing_delivery, ""),

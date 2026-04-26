@@ -12,6 +12,7 @@ RTO_COLUMN_MAP = {
     "Dealer Name": "dealer_name_rto",
     "Vehicle Registration Number": "registration_no_rto",
     "Owner Name": "owner_name_rto",
+    "Registration Date": "registration_date_rto",
     "Chassis Number": "chassis_no_rto",
 }
 
@@ -121,6 +122,7 @@ def normalize_rto_data(df: pd.DataFrame) -> pd.DataFrame:
     df["registration_no_rto"] = normalize_string(df["registration_no_rto"])
     df["owner_name_rto"] = normalize_string(df["owner_name_rto"])
     df["rto_code"] = df["registration_no_rto"].str[0:4]
+    df["registration_date_rto"] = normalize_string(df["registration_date_rto"])
     df["chassis_no_rto"] = df["chassis_no_rto"].apply(clean_identifier)
     df["vin_rto"] = df["chassis_no_rto"].str[-6:]
     # df["id_source"] = "CHASSIS"

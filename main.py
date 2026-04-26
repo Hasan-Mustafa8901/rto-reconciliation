@@ -37,18 +37,19 @@ class RTORecoApp(ctk.CTk):
 
         # ---------------- Window ----------------
         self.title("Automobile RTO Reco")
-        self.geometry("1000x600")
+        self.geometry("1000x700")
         # ------ Fonts ----
         heading_font = ctk.CTkFont("Calibri", 20, "bold")
         btn_font = ctk.CTkFont("Calibri", 16, "bold")
         label_font = ctk.CTkFont("Calibri", 16)
-        message_font = ctk.CTkFont("Calibri", 16)
+        message_font = ctk.CTkFont("Consolas", 14)
 
         self.df = None
         self.output_path = None
 
         # Root grid
         self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(3, weight=1)
         # ===== Header Frame
         header_frame = ctk.CTkFrame(
             self, height=100, fg_color=PRIMARY_COLOUR, corner_radius=0
@@ -120,7 +121,10 @@ class RTORecoApp(ctk.CTk):
         ).grid(row=1, column=0, sticky="w", padx=15, pady=(0, 10))
 
         self.status_label = ctk.CTkLabel(
-            load_frame, text="No file selected", font=label_font, text_color="gray"
+            load_frame,
+            text="No file selected",
+            font=label_font,
+            text_color=PRIMARY_COLOUR_HOVER,
         )
         self.status_label.grid(row=1, column=1, padx=15, sticky="w")
 
@@ -207,7 +211,7 @@ class RTORecoApp(ctk.CTk):
         message_frame = ctk.CTkFrame(self)
         message_frame.grid(row=3, column=1, sticky="nsew", padx=10, pady=10)
         message_frame.grid_columnconfigure(0, weight=1)
-        message_frame.grid_rowconfigure(0, weight=1)
+        message_frame.grid_rowconfigure(1, weight=1)  # message box row
 
         ctk.CTkLabel(message_frame, text="Messages", font=heading_font).grid(
             row=0, column=0, sticky="w", padx=10, pady=(5, 10)
@@ -215,8 +219,8 @@ class RTORecoApp(ctk.CTk):
 
         self.message_box = ctk.CTkTextbox(
             message_frame,
-            height=140,  # similar visual weight to Headers
-            wrap="word",
+            height=200,  # similar visual weight to Headers
+            wrap="none",
             font=message_font,
         )
         self.message_box.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
@@ -256,6 +260,15 @@ class RTORecoApp(ctk.CTk):
         self.message_box.delete("1.0", "end")
         self.message_box.configure(state="disabled")
 
+    def update_message_box(self, messages):
+        self.message_box.configure(state="normal")
+        self.message_box.delete("1.0", "end")
+
+        for msg in messages:
+            self.message_box.insert("end", msg + "\n")
+
+        self.message_box.configure(state="disabled")
+
     def download_template(self):
         path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
@@ -283,6 +296,7 @@ class RTORecoApp(ctk.CTk):
         self.message_box.see("end")
 
     def get_rto_reco(self):
+        self.clear_messages()
         if not hasattr(self, "file_path") or not self.file_path:
             self.show_message("Please load an Excel file first.")
             return
@@ -291,7 +305,6 @@ class RTORecoApp(ctk.CTk):
             self.show_message("Please select a dealership.")
             return
 
-        self.clear_messages()
         self.show_message("Starting Reconciliation pipeline...")
 
         # Run in background so UI does not freeze

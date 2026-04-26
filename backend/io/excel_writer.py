@@ -1,9 +1,30 @@
 from pathlib import Path
 from typing import Dict, Optional, Tuple
+from .helpers import add_serial_number
 import pandas as pd
 from datetime import datetime
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
+
+
+def _apply_bold_rows(ws, column_index: int = 1, keywords: list | None = None):
+    """
+    Bold entire rows where a specific column contains given keywords.
+    """
+    if keywords is None:
+        keywords = ["Total"]
+
+    for row in ws.iter_rows(min_row=2):  # skip header
+        cell_value = row[column_index - 1].value
+
+        if cell_value and any(k in str(cell_value) for k in keywords):
+            for cell in row:
+                cell.font = Font(
+                    name=cell.font.name,
+                    size=cell.font.size,
+                    bold=True,
+                    color=cell.font.color,
+                )
 
 
 def _add_merged_title(ws, title: str, row: int = 1):
@@ -25,7 +46,7 @@ def _add_merged_title(ws, title: str, row: int = 1):
     cell.alignment = Alignment(horizontal="center", vertical="center")
 
     # Optional: add fill for professional look
-    cell.fill = PatternFill(start_color="538DD5", end_color="538DD5", fill_type="solid")
+    cell.fill = PatternFill(start_color="16365C", end_color="16365C", fill_type="solid")
 
 
 def _apply_styling(ws, header_rows=None):
@@ -40,7 +61,7 @@ def _apply_styling(ws, header_rows=None):
     header_font = Font("Times New Roman", bold=True, color="FFFFFF")
     content_font = Font(name="Times New Roman")
     header_fill = PatternFill(
-        start_color="538DD5", end_color="538DD5", fill_type="solid"
+        start_color="16365C", end_color="16365C", fill_type="solid"
     )
     header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
@@ -141,6 +162,7 @@ def write_output_workbook(
         _add_merged_title(ws, "RTO Reco Summary", row=second_header_row + 1)
 
         # Attachments
+        attachments["attachment_1"] = add_serial_number(attachments["attachment_1"])
         att_1_sheet_name = "Attachment 1"
         attachments["attachment_1"].to_excel(
             writer,
@@ -154,6 +176,7 @@ def write_output_workbook(
             "Attachment-1 : Deliveries Intimated but not found in RTO records",
         )
 
+        attachments["attachment_2"] = add_serial_number(attachments["attachment_2"])
         att_2_sheet_name = "Attachement 2"
         attachments["attachment_2"].to_excel(
             writer, sheet_name=att_2_sheet_name, index=False, startrow=2
@@ -165,18 +188,28 @@ def write_output_workbook(
         )
 
         if not attachments["delivery_reco"].empty and not attachments["rto_reco"].empty:
+            del_reco_sheet_name = "Delivery Reco"
+            attachments["delivery_reco"] = add_serial_number(
+                attachments["delivery_reco"]
+            )
             attachments["delivery_reco"].to_excel(
                 writer,
                 sheet_name="Delivery Reco",
                 index=False,
                 startrow=2,
             )
+            ws = writer.sheets[del_reco_sheet_name]
+            _add_merged_title(ws, "Delivery Reco: For Verifications of Results Only")
+            rto_reco_sheet_name = "RTO Reco"
+            attachments["rto_reco"] = add_serial_number(attachments["rto_reco"])
             attachments["rto_reco"].to_excel(
                 writer,
                 sheet_name="RTO Reco",
                 index=False,
                 startrow=2,
             )
+            ws = writer.sheets[rto_reco_sheet_name]
+            _add_merged_title(ws, "RTO Reco: For Verifications of Results Only")
 
         # RTO Summary (Standalone)
         rto_summary_sheet_name = "RTO Summary"
@@ -195,7 +228,11 @@ def write_output_workbook(
                 # Header rows: startrow + 1 (pandas writes header at startrow)
                 # So row 2 (index 1) and row second_header_row + 2
                 _apply_styling(sheet, header_rows=[2, second_header_row + 2])
+                _apply_bold_rows(
+                    sheet, column_index=1, keywords=["Total", "Matched", "Mismatch"]
+                )  # Bold rows where first column has "Total"
             else:
                 _apply_styling(sheet, header_rows=[3])
+                _apply_bold_rows(sheet, column_index=1)
 
     return str(output_path)

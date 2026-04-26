@@ -30,6 +30,31 @@ def rto_x_showroom(df: pd.DataFrame, all_rto_code: List[str]) -> pd.DataFrame:
     return result
 
 
+def add_total_row(df: pd.DataFrame, label: str = "Total") -> pd.DataFrame:
+    """
+    Adds a total row at the end of RTO summary dataframe.
+    Sums numeric columns and labels the row.
+    """
+    df = df.copy()
+
+    # Identify numeric columns
+    numeric_cols = df.select_dtypes(include="number").columns
+
+    # Create total row
+    total_row = {
+        col: df[col].sum() if col in numeric_cols else "" for col in df.columns
+    }
+
+    # Set label (usually first column is 'RTOs')
+    first_col = df.columns[0]
+    total_row[first_col] = label
+
+    # Append row
+    df = pd.concat([df, pd.DataFrame([total_row])], ignore_index=True)
+
+    return df
+
+
 def other_cases(df: pd.DataFrame, showrooms: List[str]) -> pd.DataFrame:
     valid_showrooms = [s for s in showrooms if s in df.columns]
     df["out_of_scope"] = df["Total Vehicles"] - (df[valid_showrooms].sum(axis=1))
@@ -57,6 +82,42 @@ def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
         cols.insert(-1, "Showroom Total")
 
     return df[cols]
+
+
+def prioritize_and_sort(
+    df: pd.DataFrame,
+    column: str,
+    priority: list,
+    sort_by: str | None = None,
+    ascending: bool = True,
+    keep_total_last: bool = True,
+) -> pd.DataFrame:
+    df = df.copy()
+
+    # --- Separate total row if needed
+    if keep_total_last and column in df.columns:
+        total_df = df[df[column] == "Total"]
+        df = df[df[column] != "Total"]
+    else:
+        total_df = pd.DataFrame()
+
+    # --- Priority rows
+    priority_df = df[df[column].isin(priority)].copy()
+    priority_df["_order"] = priority_df[column].apply(lambda x: priority.index(x))
+    priority_df = priority_df.sort_values("_order").drop(columns="_order")
+
+    # --- Remaining rows
+    remaining_df = df[~df[column].isin(priority)]
+
+    if sort_by:
+        remaining_df = remaining_df.sort_values(by=sort_by, ascending=ascending)
+    else:
+        remaining_df = remaining_df.sort_values(by=column, ascending=ascending)
+
+    # --- Combine all
+    final_df = pd.concat([priority_df, remaining_df, total_df], ignore_index=True)
+
+    return final_df
 
 
 def build_rto_summary(
@@ -101,5 +162,14 @@ def build_rto_summary(
     # Reorder columns
     crosstab_showroom_rto = reorder_columns(crosstab_showroom_rto)
     crosstab_showroom_rto.sort_index(inplace=True, ascending=False)
+    crosstab_showroom_rto = prioritize_and_sort(
+        crosstab_showroom_rto,
+        column="RTOs",
+        priority=["UP32"],
+        sort_by="Total Vehicles",
+        ascending=False,
+    )
+    # Add Total Row
+    crosstab_showroom_rto = add_total_row(crosstab_showroom_rto)
 
     return crosstab_showroom_rto

@@ -31,7 +31,7 @@ def build_attachments(recon_result: Dict[str, pd.DataFrame]) -> Dict[str, pd.Dat
 
     attachment_1["delivery_date_del"] = pd.to_datetime(
         attachment_1["delivery_date_del"], format="%Y-%m-%d"
-    ).dt.strftime("%d-%m-%Y")
+    ).dt.strftime("%d/%m/%Y")
 
     attachment_1 = attachment_1[attachment_1_cols]
 
@@ -54,10 +54,11 @@ def build_attachments(recon_result: Dict[str, pd.DataFrame]) -> Dict[str, pd.Dat
     # --------------------------------------------------
     attachment_2_cols = [
         "office_name_rto",
+        "registration_date_rto",
+        "owner_name_rto",
         "chassis_no_rto",
         "vin_rto",
         "registration_no_rto",
-        "owner_name_rto",
         "status",
     ]
     attachment_2 = rto_recon[
@@ -68,14 +69,32 @@ def build_attachments(recon_result: Dict[str, pd.DataFrame]) -> Dict[str, pd.Dat
         )
         & (rto_recon["status"] == "Not Matched")
     ].copy()
+
+    attachment_2["registration_date_rto"] = pd.to_datetime(
+        attachment_2["registration_date_rto"], format="%Y-%m-%d"
+    ).dt.strftime("%d/%m/%Y")
+
+    attachment_2 = (
+        attachment_2.sort_values(
+            by=[
+                "office_name_rto",
+                "registration_date_rto",
+            ],
+            na_position="last",
+        )
+        .reset_index(drop=True)
+        .copy()
+    )
+
     attachment_2 = attachment_2[attachment_2_cols]
     attachment_2.rename(
         {
             "office_name_rto": "Location",
+            "registration_date_rto": "Registration Date",
+            "owner_name_rto": "Customer Name",
             "chassis_no_rto": "Chassis Number",
             "vin_rto": "VIN Number",
             "registration_no_rto": "Registration Number",
-            "owner_name_rto": "Owner Name",
             "status": "Status",
         },
         axis=1,
