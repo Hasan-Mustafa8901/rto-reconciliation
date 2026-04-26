@@ -1,4 +1,6 @@
 import customtkinter as ctk
+from PIL import Image
+import shutil
 from tkinter import filedialog
 from backend.orchestrator.pipeline_runner import run_reconciliation_pipeline
 import threading
@@ -25,6 +27,7 @@ EXPECTED_SCHEMAS = {
 PRIMARY_COLOUR = "#16365C"
 PRIMARY_COLOUR_HOVER = "#204A7D"
 SECONDARY_COLOUR = "#EDE8D0"
+SECONDARY_COLOUR_HOVER = "#F5F1DC"
 ACCENT_COLOUR = "#FFC107"
 
 
@@ -35,6 +38,11 @@ class RTORecoApp(ctk.CTk):
         # ---------------- Window ----------------
         self.title("Automobile RTO Reco")
         self.geometry("1000x600")
+        # ------ Fonts ----
+        heading_font = ctk.CTkFont("Calibri", 20, "bold")
+        btn_font = ctk.CTkFont("Calibri", 16, "bold")
+        label_font = ctk.CTkFont("Calibri", 16)
+        message_font = ctk.CTkFont("Calibri", 16)
 
         self.df = None
         self.output_path = None
@@ -45,35 +53,56 @@ class RTORecoApp(ctk.CTk):
         header_frame = ctk.CTkFrame(
             self, height=100, fg_color=PRIMARY_COLOUR, corner_radius=0
         )
-        header_frame.grid(row=0, column=0, columnspan=3, sticky="ew", padx=0, pady=0)
+        header_frame.grid(row=0, column=0, columnspan=3, sticky="ew")
+
+        # Configure columns
+        header_frame.grid_columnconfigure(0, weight=0)  # logo
+        header_frame.grid_columnconfigure(1, weight=1)  # text (expand)
+        header_frame.grid_columnconfigure(2, weight=0)  # text (expand)
+
+        # --- Load image (IMPORTANT: keep reference)
+        self.logo_img = ctk.CTkImage(Image.open("assets/logo.png"), size=(80, 80))
+
+        # --- Logo on left
+        logo_label = ctk.CTkLabel(header_frame, image=self.logo_img, text="")
+        logo_label.grid(row=0, column=0, rowspan=3, padx=20, pady=10, sticky="w")
+
+        # --- Text content (center-left)
         ctk.CTkLabel(
             header_frame,
             text="Automobile RTO Reconciliation",
             font=ctk.CTkFont("Calibri", 24, "bold"),
             text_color=SECONDARY_COLOUR,
-        ).pack()
+        ).grid(row=0, column=1, sticky="w", pady=(10, 0))
+
         ctk.CTkLabel(
             header_frame,
             text="Asija and Associates LLP",
-            font=ctk.CTkFont("Calibri", 16),
+            font=ctk.CTkFont("Calibri", 16, "bold"),
             text_color=SECONDARY_COLOUR,
-        ).pack()
+        ).grid(row=1, column=1, sticky="w", pady=(5, 0))
+
         ctk.CTkLabel(
             header_frame,
             text="Audit and Assurance Vertical",
-            font=ctk.CTkFont("Calibri", 14),
+            font=ctk.CTkFont("Calibri", 14, "bold"),
             text_color=SECONDARY_COLOUR,
-        ).pack()
+        ).grid(row=2, column=1, sticky="w", pady=(0, 10))
+
+        ctk.CTkButton(
+            header_frame,
+            text="Export Input Template",
+            text_color=PRIMARY_COLOUR,
+            font=btn_font,
+            fg_color=SECONDARY_COLOUR,
+            hover_color=SECONDARY_COLOUR_HOVER,
+            command=self.download_template,
+        ).grid(row=1, column=2, sticky="ew", padx=(0, 20))
 
         # ================= LOAD FILE FRAME =================
         load_frame = ctk.CTkFrame(self)
         load_frame.grid(row=1, column=0, columnspan=3, sticky="ew", padx=20, pady=10)
         load_frame.grid_columnconfigure(0, weight=1)
-
-        heading_font = ctk.CTkFont("Calibri", 20, "bold")
-        btn_font = ctk.CTkFont("Calibri", 16, "bold")
-        label_font = ctk.CTkFont("Calibri", 16)
-        message_font = ctk.CTkFont("Calibri", 16)
 
         # Simulated LabelFrame title
         ctk.CTkLabel(load_frame, text="Import File", font=heading_font).grid(
@@ -101,13 +130,13 @@ class RTORecoApp(ctk.CTk):
         info_frame.grid_columnconfigure((0, 1), weight=1)
 
         ctk.CTkLabel(info_frame, text="Workbook Info", font=heading_font).grid(
-            row=0, column=0, sticky="w", padx=15, pady=(5, 15)
+            row=0, column=0, sticky="w", padx=15, pady=(5, 2)
         )
 
         self.selected_sheet = ctk.StringVar()
 
         ctk.CTkLabel(info_frame, text="Sheet:", font=label_font).grid(
-            row=1, column=0, padx=15, sticky="w"
+            row=1, column=0, padx=15, sticky="w", pady=(0, 2)
         )
 
         self.sheet_dropdown = ctk.CTkComboBox(
@@ -132,10 +161,10 @@ class RTORecoApp(ctk.CTk):
         )
 
         ctk.CTkLabel(info_frame, text="Headers:", font=label_font).grid(
-            row=3, column=0, sticky="w", padx=15, pady=(10, 2)
+            row=3, column=0, sticky="w", padx=15, pady=(0, 2)
         )
 
-        self.headers_text = ctk.CTkTextbox(info_frame, height=80, font=message_font)
+        self.headers_text = ctk.CTkTextbox(info_frame, height=50, font=message_font)
         self.headers_text.grid(
             row=4, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 10)
         )
@@ -157,12 +186,16 @@ class RTORecoApp(ctk.CTk):
             variable=self.selected_dealer,
             value="BR",
             font=label_font,
+            fg_color=PRIMARY_COLOUR_HOVER,
+            hover_color=PRIMARY_COLOUR_HOVER,
         ).grid(row=1, column=0, sticky="w", padx=10)
         ctk.CTkRadioButton(
             dealer_frame,
             text="SRM Tata",
             variable=self.selected_dealer,
             value="SAS",
+            fg_color=PRIMARY_COLOUR_HOVER,
+            hover_color=PRIMARY_COLOUR_HOVER,
             font=label_font,
         ).grid(row=2, column=0, sticky="w", padx=10, pady=(0, 15))
 
@@ -202,6 +235,7 @@ class RTORecoApp(ctk.CTk):
             width=180,
             text_color=PRIMARY_COLOUR,
             fg_color=SECONDARY_COLOUR,
+            hover_color=SECONDARY_COLOUR_HOVER,
             font=btn_font,
             command=self.choose_output_dir,
         ).grid(row=1, column=0, padx=10, pady=(0, 8))
@@ -221,6 +255,26 @@ class RTORecoApp(ctk.CTk):
         self.message_box.configure(state="normal")
         self.message_box.delete("1.0", "end")
         self.message_box.configure(state="disabled")
+
+    def download_template(self):
+        path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel file", "*.xlsx")],
+            initialfile="rto_template.xlsx",
+        )
+
+        if not path:
+            return
+
+        # Get absolute path to template
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(base_dir, "assets", "template.xlsx")
+
+        if not os.path.exists(template_path):
+            print("Template not found:", template_path)
+            return
+
+        shutil.copy(template_path, path)
 
     def show_message(self, text: str):
         self.message_box.configure(state="normal")
