@@ -1,33 +1,17 @@
 import pandas as pd
 from typing import Dict, List
-
-
-# Sheet Name Contracts
-RTO_SHEET_NAME = "RTO Data" or "RTO Sheet"
-DELIVERY_CURRENT_SHEET_NAME = "Delivery Data" or "Delivery Sheet"
-DELIVERY_PREVIOUS_SHEET_NAME = "Delivery Data (Previous)"  # optional
-
-# Schema Definition
-RTO_REQUIRED_COLUMNS = [
-    "Office Name",
-    "Dealer Name",
-    "Vehicle Registration Number",
-    "Owner Name",
-    "Chassis Number",
-]
-
-DELIVERY_REQUIRED_COLUMNS = [
-    "Delivery Date",
-    "Customer Name",
-    "Chassis Number",
-    "Showroom",
-]
-BH_SERIES_PATTERN = r"^\d{2}BH\d{4}[A-Z]{1}$"
-UP_SERIES_PATTERN = r"^[A-Z]{2}\d{2}[A-Z]{2}\d{4}$"
-NEW_SERIES_PATTERN = r"^NEW$"
-TEMP_SERIES_PATTERN = r"^T\d{4}[A-Z]{2}\d{4}[A-Z]$"
-
-CHASSIS_NUMBER_PATTERN = r"^[A-HJ-NPR-Z0-9]{17}$"
+from backend.constant import (
+    RTO_REQUIRED_COLUMNS,
+    RTO_SHEET_NAME,
+    DELIVERY_CURRENT_SHEET_NAME,
+    DELIVERY_PREVIOUS_SHEET_NAME,
+    DELIVERY_REQUIRED_COLUMNS,
+    UP_SERIES_PATTERN,
+    BH_SERIES_PATTERN,
+    # TEMP_SERIES_PATTERN,
+    # NEW_SERIES_PATTERN,
+    CHASSIS_NUMBER_PATTERN,
+)
 
 
 def build_violation_table(
@@ -79,18 +63,27 @@ class ValidationError:
         return f"[{self.sheet}] {self.message}"
 
 
+class ValidationWarning:
+    def __init__(self, sheet: str, message: str) -> None:
+        self.sheet = sheet
+        self.message = message
+
+    def __repr__(self) -> str:
+        return f"[{self.sheet}] {self.message}"
+
+
 class ValidationResult:
     def __init__(self) -> None:
         self.is_valid: bool = True
         self.errors: List[ValidationError] = []
-        self.warnings: List[str] = []
+        self.warnings: List[ValidationWarning] = []
 
     def add_error(self, sheet: str, message: str):
         self.is_valid = False
         self.errors.append(ValidationError(sheet, message))
 
-    def add_warning(self, message: str):
-        self.warnings.append(message)
+    def add_warning(self, sheet: str, message: str):
+        self.warnings.append(ValidationWarning(sheet, message))
 
 
 # Ingestion
@@ -108,26 +101,55 @@ def validate_null_column(df, column, sheet, result):
     if column in df.columns:
         mask = df[column].isna()
         if mask.all():
-            result.add_error(sheet, f"All {column} are Null.")
+            result.add_warning(sheet, f"All {column} are Null.")
         return mask
     return pd.Series(False, index=df.index)
 
 
 def validate_duplicates(df, column, sheet, result):
     if column in df.columns:
-        mask = df[column].duplicated(keep=False)
+        series = df[column]
+        mask = series.notna() & series.duplicated(keep=False)
         if mask.any():
-            result.add_warning(f"Duplicate {column} found in {sheet}")
+            result.add_warning(sheet, f"Duplicate {column} found in {sheet}")
         return mask
     return pd.Series(False, index=df.index)
 
 
-def validate_pattern(df, column, pattern, sheet, result, message):
+# def validate_pattern(df, column, pattern, sheet, result, message):
+#     if column in df.columns:
+#         series = df[column]
+#         mask = series.notna() & ~series.astype(str).str.match(pattern, na=False)
+#         if mask.any():
+#             result.add_warning(sheet, message)
+#         return mask
+#     return pd.Series(False, index=df.index)
+
+
+def validate_pattern(
+    df,
+    column,
+    sheet,
+    result,
+    message,
+    patterns: list,
+):
     if column in df.columns:
-        mask = ~df[column].astype(str).str.match(pattern, na=False)
+        series = df[column]
+        s = series.astype(str).str.strip()
+
+        # Combine all valid patterns
+        valid_mask = False
+        for p in patterns:
+            valid_mask |= s.str.match(p)
+
+        mask = series.notna() & ~valid_mask
+
         if mask.any():
-            result.add_error(sheet, message)
+            result.add_warning(sheet, message)
+
         return mask
+
     return pd.Series(False, index=df.index)
 
 
@@ -135,7 +157,7 @@ def validate_length(df, column, max_len, sheet, result):
     if column in df.columns:
         mask = df[column].astype(str).str.len().gt(max_len)
         if mask.any():
-            result.add_warning(f"{column} length exceeds {max_len} in {sheet}")
+            result.add_warning(sheet, f"{column} length exceeds {max_len} in {sheet}")
         return mask
     return pd.Series(False, index=df.index)
 
@@ -164,10 +186,10 @@ def validate_rto_sheet(df: pd.DataFrame, result: ValidationResult):
     mask = validate_pattern(
         df,
         "Chassis Number",
-        CHASSIS_NUMBER_PATTERN,
         sheet,
         result,
         "Invalid Chassis Number format in RTO Sheet",
+        patterns=[CHASSIS_NUMBER_PATTERN, r"^\d{6}$"],
     )
     if mask.any():
         violations["invalid_chassis_format"] = build_violation_table(
@@ -192,10 +214,10 @@ def validate_rto_sheet(df: pd.DataFrame, result: ValidationResult):
     mask = validate_pattern(
         df,
         "Vehicle Registration Number",
-        f"({BH_SERIES_PATTERN}|{UP_SERIES_PATTERN})",
         sheet,
         result,
         "Invalid Vehicle Registration Number format in RTO Sheet",
+        patterns=[BH_SERIES_PATTERN, UP_SERIES_PATTERN],
     )
     if mask.any():
         violations["invalid_vrn_format"] = build_violation_table(
@@ -225,10 +247,10 @@ def validate_delivery_sheet(
     mask = validate_pattern(
         df,
         "Chassis Number",
-        CHASSIS_NUMBER_PATTERN,
         sheet_name,
         result,
         f"Invalid Chassis Number format in {sheet_name}",
+        patterns=[CHASSIS_NUMBER_PATTERN, r"^\d{6}$"],
     )
     if mask.any():
         violations["invalid_chassis_format"] = build_violation_table(
@@ -239,15 +261,8 @@ def validate_delivery_sheet(
     if "Delivery Date" in df.columns:
         mask = df["Delivery Date"].isna()
         if mask.any():
-            result.add_warning(f"Missing Delivery Date in {sheet_name}")
+            result.add_warning(sheet_name, f"Missing Delivery Date in {sheet_name}")
             violations["missing_delivery_date"] = df[mask]
-
-    # --- (Optional) Invoice Number duplicates
-    if "Invoice Number" in df.columns:
-        mask = df["Invoice Number"].duplicated()
-        if mask.any():
-            result.add_warning(f"Duplicate Invoice Numbers in {sheet_name}")
-            violations["duplicate_invoice"] = df[mask]
 
     return violations
 

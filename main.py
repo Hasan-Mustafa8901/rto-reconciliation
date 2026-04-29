@@ -6,6 +6,19 @@ from backend.orchestrator.pipeline_runner import run_reconciliation_pipeline
 import threading
 import pandas as pd
 import os
+import sys
+
+
+def get_base_path():
+    if getattr(sys, "frozen", False):
+        return sys._MEIPASS  # PyInstaller temp dir
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+base_path = get_base_path()
+logo_path = os.path.join(base_path, "assets", "logo.png")
+template_path = os.path.join(base_path, "assets", "template.xlsx")
+
 
 EXPECTED_SCHEMAS = {
     "Delivery Data": {
@@ -63,7 +76,7 @@ class RTORecoApp(ctk.CTk):
         header_frame.grid_columnconfigure(2, weight=0)  # text (expand)
 
         # --- Load image (IMPORTANT: keep reference)
-        self.logo_img = ctk.CTkImage(Image.open("assets/logo.png"), size=(80, 80))
+        self.logo_img = ctk.CTkImage(Image.open(logo_path), size=(80, 80))
 
         # --- Logo on left
         logo_label = ctk.CTkLabel(header_frame, image=self.logo_img, text="")

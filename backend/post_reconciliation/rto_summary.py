@@ -62,8 +62,8 @@ def other_cases(df: pd.DataFrame, showrooms: List[str]) -> pd.DataFrame:
 
 
 def map_rto_to_city(df: pd.DataFrame, mapping: dict) -> pd.DataFrame:
-    df = df[df.index.notna()]
-    df["RTO City"] = df.index.map(lambda x: mapping.get(x, "Unknown"))
+    df = df[df.index.notna()].copy()
+    df.loc[:, "RTO City"] = df.index.to_series().map(mapping).fillna("RTO Awaited")
 
     return df
 

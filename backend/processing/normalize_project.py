@@ -1,6 +1,7 @@
 # normalize_project.py
 import pandas as pd
 from typing import Dict, Optional
+from backend.constant import RTO_REQUIRED_COLUMNS
 
 
 # =========================
@@ -111,7 +112,15 @@ def normalize_rto_data(df: pd.DataFrame) -> pd.DataFrame:
     Normalize and project RTO Data to canonical schema.
     """
     # 1. Select required columns only
-    df = df[list(RTO_COLUMN_MAP.keys())].copy()
+    missing_required = [col for col in RTO_REQUIRED_COLUMNS if col not in df.columns]
+    if missing_required:
+        ValueError(f"Missing Required Columns:{missing_required}")
+
+    cols = RTO_REQUIRED_COLUMNS.copy()
+    if "Registraion Date" in df.columns:
+        cols.append("Registration Date")
+
+    df = df[cols].copy()
 
     # 2. Rename columns
     df.rename(columns=RTO_COLUMN_MAP, inplace=True)
@@ -122,10 +131,13 @@ def normalize_rto_data(df: pd.DataFrame) -> pd.DataFrame:
     df["registration_no_rto"] = normalize_string(df["registration_no_rto"])
     df["owner_name_rto"] = normalize_string(df["owner_name_rto"])
     df["rto_code"] = df["registration_no_rto"].str[0:4]
-    df["registration_date_rto"] = normalize_string(df["registration_date_rto"])
     df["chassis_no_rto"] = df["chassis_no_rto"].apply(clean_identifier)
     df["vin_rto"] = df["chassis_no_rto"].str[-6:]
     # df["id_source"] = "CHASSIS"
+    if "registraion_date_rto" in df.columns:
+        df["registration_date_rto"] = normalize_string(df["registration_date_rto"])
+    else:
+        df["registration_date_rto"] = None
 
     return df
 
